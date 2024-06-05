@@ -143,13 +143,3 @@ def train(model: nn.Module,
     print(f"After training for {epochs} achieved test_loss: {test_loss}, test_acc: {test_acc}")
 
     return results
-    
-    
-    
-
-
-
-        
-
-        
-
