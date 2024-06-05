@@ -9,10 +9,8 @@ load_dotenv()
 # Data download path, credits: mrdbourke
 data_down_url = "https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip"
 
-
 data_path = Path(os.environ.get('data_path'))
 image_path = data_path / "images"
-
 
 # Code for creating the directories where the raw images shall be stored.
 if image_path.is_dir():
