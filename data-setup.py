@@ -1,13 +1,16 @@
 import os
 import zipfile
 import requests
+from dotenv import load_dotenv
 from pathlib import Path
+
+load_dotenv()
 
 # Data download path, credits: mrdbourke
 data_down_url = "https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip"
 
 
-data_path = Path("/home/syednoor/Desktop/SAM/data")
+data_path = Path(os.environ.get('data_path'))
 image_path = data_path / "images"
 
 
