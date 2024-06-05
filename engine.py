@@ -36,7 +36,7 @@ def step(model: nn.Module,
             step_loss += loss.item()
 
             # computing the accuracy as currently performing a classification task
-            y_pred_class = torch.argmax(probs)
+            y_pred_class = torch.argmax(probs, dim = 1)
             step_acc += (y_pred_class == y).sum().item() / len(y)
 
             if type_step == 'train':
@@ -124,7 +124,7 @@ def train(model: nn.Module,
             results['val_acc'].append(val_acc)
 
             result_string += "val_loss: {val_loss: .4f}, val_acc: {val_acc: .4f}"
-            
+
         # Printing epoch wise results.
         print(result_string)
 
