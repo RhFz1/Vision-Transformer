@@ -7,7 +7,7 @@ from pathlib import Path
 data_down_url = "https://github.com/mrdbourke/pytorch-deep-learning/raw/main/data/pizza_steak_sushi.zip"
 
 
-data_path = Path("/data")
+data_path = Path("/home/syednoor/Desktop/SAM/data")
 image_path = data_path / "images"
 
 
