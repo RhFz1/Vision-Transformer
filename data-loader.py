@@ -12,14 +12,19 @@ def build_dataloader(
         validation_split: float = 0.2,
         num_workers: int = NUM_WORKERS
 ):
+  
+  # This loads the data from directories automatically taking the folder names as classnames.
   train_data = datasets.ImageFolder(train_dir, transform=transform)
   test_data = datasets.ImageFolder(test_dir, transform=transform)
 
+  # This ensures on fixing a bound for validation_split
   assert validation_split < 1, "The validation split should be lesser than 1 !!!. 0.8 implies 80% data pushed to validation rest for train"
   
+  # Introducing validation set from train samples as do not want to disturb the test set.
   val_size = int(validation_split * len(train_data))
   train_size = int((1.00 - validation_split) * len(train_data))
 
+  # This function randomly samples train_size number of samples to train_sub and viceversa for val_sub.
   train_sub, val_sub = random_split(train_data, [train_size, val_size])
 
   # Get Image classes
@@ -37,7 +42,7 @@ def build_dataloader(
   validation_dataloader = DataLoader(
     val_sub,
     batch_size=batch_size,
-    shuffle=False,
+    shuffle=False, # Not shuffling validation and test as not required!!
     num_workers=NUM_WORKERS,
     pin_memory=True
   )
