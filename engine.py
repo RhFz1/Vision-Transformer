@@ -2,15 +2,17 @@ import torch
 import contextlib
 from torch.nn import nn
 
+from typing import Dict, List, Tuple
+
 
 # This file basically contains the blocks for efficiently training the model.
 
 def step(model: nn.Module,
-               dataloader: torch.utils.data.Dataloader,
-               loss_function: torch.nn.Module,
-               optimizer: torch.optim.Optimizer,
-               device: torch.device,
-               type_step: str)-> tuple[float, float]:
+         dataloader: torch.utils.data.Dataloader,
+         loss_function: torch.nn.Module,
+         optimizer: torch.optim.Optimizer,
+         device: torch.device,
+         type_step: str)-> Tuple[float, float]:
     
     N = len(dataloader)
     # assert max_grad_accumulation_steps / N < 0.3, "Let the grad. accumulation steps be less than 30% of total batches."
@@ -46,3 +48,83 @@ def step(model: nn.Module,
         step_acc = step_acc / N
 
     return step_loss, step_acc
+
+def train(model: nn.Module,
+          train_dataloader: torch.utils.data.Dataloader,
+          validation_dataloader: torch.utils.data.Dataloader,
+          test_dataloader: torch.utils.data.Dataloader,
+          optimizer: torch.optim.Optimizer,
+          loss_function: torch.nn.Module,
+          epochs: int,
+          eval_iters: int, 
+          eval_interval: int,
+          device: torch.device
+          )-> Dict[str, list]:
+    # Create empty results dictionary
+    results = {"train_loss": [],
+        "train_acc": [],
+        "val_loss": [],
+        "val_acc": [],
+        "test_loss": [],
+        "test_acc": []
+    }
+
+    for epoch in range(epochs):
+
+        # Train the model initially
+        train_loss, train_acc = step(model=model,
+                                     dataloader=train_dataloader,
+                                     loss_function=loss_function,
+                                     optimizer=optimizer,
+                                     device=device,
+                                     type_step='train')
+        
+        result_string = f"Epoch {epoch + 1}: train_loss: {train_loss: .4f}, train_acc: {train_acc: .4f}"
+        
+        results['train_loss'].append(train_loss)
+        results['train_acc'].append(train_acc)
+        
+        if (epoch != 0 and epoch % eval_interval == 0):
+            val_loss, val_acc = 0.0, 0.0
+            for itr in range(eval_iters):
+                cur_val_loss, cur_val_acc = step(model=model,
+                                                 dataloader=validation_dataloader,
+                                                 loss_function=loss_function,
+                                                 optimizer=optimizer,
+                                                 device=device,
+                                                 type_step='val')
+                val_loss += cur_val_loss
+                val_acc += cur_val_loss
+
+            val_loss = val_loss / eval_iters
+            val_acc = val_acc / eval_iters
+
+            results['val_loss'].append(val_loss)
+            results['val_acc'].append(val_acc)
+
+            result_string += "val_loss: {val_loss: .4f}, val_acc: {val_acc: .4f}"
+        
+        print(result_string)
+
+    test_loss, test_acc = step(model=model,
+                               dataloader=test_dataloader,
+                               loss_function=loss_function,
+                               optimizer=optimizer,
+                               device=device,
+                               type_step='test')
+    
+    results['train_loss'].append(test_loss)
+    results['test_acc'].append(test_acc)
+
+    print("Training Complete!!")
+    print(f"After training for {epochs} achieved test_loss: {test_loss}, test_acc: {test_acc}")
+    
+    
+    
+
+
+
+        
+
+        
+
