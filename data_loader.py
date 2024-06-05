@@ -22,7 +22,7 @@ def build_dataloader(
   
   # Introducing validation set from train samples as do not want to disturb the test set.
   val_size = int(validation_split * len(train_data))
-  train_size = int((1.00 - validation_split) * len(train_data))
+  train_size = int(len(train_data) - val_size)
 
   # This function randomly samples train_size number of samples to train_sub and viceversa for val_sub.
   train_sub, val_sub = random_split(train_data, [train_size, val_size])
