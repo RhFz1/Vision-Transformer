@@ -19,15 +19,16 @@ else:
     print(f"Creating {image_path} directory!!")
     image_path.mkdir(parents=True, exist_ok=True, mode=0o770)
 
-# Downloading the files
-with open(data_path / "images.zip", mode="wb") as file:
-    request = requests.get(data_down_url)
-    print("Downloading the data")
-    file.write(request.content)
+if not os.listdir(image_path):
+    # Downloading the files
+    with open(data_path / "images.zip", mode="wb") as file:
+        request = requests.get(data_down_url)
+        print("Downloading the data")
+        file.write(request.content)
 
-# Unzipping the files
-with zipfile.ZipFile(data_path / "images.zip", 'r') as zipref:
-    print("Unzipping the file contents")
-    zipref.extractall(image_path)
+    # Unzipping the files
+    with zipfile.ZipFile(data_path / "images.zip", 'r') as zipref:
+        print("Unzipping the file contents")
+        zipref.extractall(image_path)
 
-os.remove(data_path / "images.zip")
+    os.remove(data_path / "images.zip")
