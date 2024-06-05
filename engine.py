@@ -34,11 +34,12 @@ def step(model: nn.Module,
             y_pred_class = torch.argmax(probs)
             step_acc += (y_pred_class == y).sum().item() / len(y)
 
-            optimizer.zero_grad()
-
-            loss.backward()
-            # performing updation of weights and zero grad for next backprop
-            optimizer.step()
+            if type_step == 'train':
+                # performing updation of weights and zero grad for next backprop
+                optimizer.zero_grad()
+                loss.backward()
+                # Updating the weights with calculated grads dw = dw - lr * dr
+                optimizer.step()
 
         # Normalizing the train eval metrics.
         step_loss = step_loss / N
