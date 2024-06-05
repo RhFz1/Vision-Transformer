@@ -1,9 +1,12 @@
+import os
 import torch
 import contextlib
 from torch.nn import nn
-
+from utils import save_model
+from dotenv import load_dotenv
 from typing import Dict, List, Tuple
 
+load_dotenv()
 
 # This file basically contains the blocks for efficiently training the model.
 
@@ -58,6 +61,7 @@ def train(model: nn.Module,
           epochs: int,
           eval_iters: int, 
           eval_interval: int,
+          model_name: str,
           device: torch.device
           )-> Dict[str, list]:
     # Create empty results dictionary
@@ -85,6 +89,10 @@ def train(model: nn.Module,
         results['train_acc'].append(train_acc)
         
         if (epoch != 0 and epoch % eval_interval == 0):
+
+            k = results['val_loss']
+
+            # Accumulating the val_loss for eval_iters for smooth tracking
             val_loss, val_acc = 0.0, 0.0
             for itr in range(eval_iters):
                 cur_val_loss, cur_val_acc = step(model=model,
@@ -96,16 +104,31 @@ def train(model: nn.Module,
                 val_loss += cur_val_loss
                 val_acc += cur_val_loss
 
+            # Normalizing the val_loss
             val_loss = val_loss / eval_iters
             val_acc = val_acc / eval_iters
 
+
+            # Evaluating with previous scores to save the model
+            if len(k):
+                if k[-1] < val_loss:
+                    save_model(
+                        model=model,
+                        optimizer=optimizer,
+                        target_dir=os.environ.get('model_registry'),
+                        model_name=model_name
+                    )
+
+            # Appending to results, mind it val_loss array shall be lesser in size than train_loss
             results['val_loss'].append(val_loss)
             results['val_acc'].append(val_acc)
 
             result_string += "val_loss: {val_loss: .4f}, val_acc: {val_acc: .4f}"
-        
+            
+        # Printing epoch wise results.
         print(result_string)
 
+    # Computing the test loss once the training is complete.
     test_loss, test_acc = step(model=model,
                                dataloader=test_dataloader,
                                loss_function=loss_function,
@@ -118,6 +141,8 @@ def train(model: nn.Module,
 
     print("Training Complete!!")
     print(f"After training for {epochs} achieved test_loss: {test_loss}, test_acc: {test_acc}")
+
+    return results
     
     
     
