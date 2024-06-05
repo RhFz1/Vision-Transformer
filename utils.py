@@ -9,7 +9,9 @@ def save_model(model: nn.Module,
     
     # Create target directory
     target_dir_path = Path(target_dir)
-    target_dir_path.mkdir(parents=True,exist_ok=True)
+
+    if not target_dir_path.is_dir():
+        target_dir_path.mkdir(parents=True,exist_ok=True)
 
     # Create model saving path
     assert model_name.endswith('.pth') or model_name.endswith('.pt'), "Model name should be a .pt ot .pth extension"
