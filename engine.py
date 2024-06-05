@@ -1,7 +1,7 @@
 import os
 import torch
 import contextlib
-from torch.nn import nn
+from torch import nn
 from utils import save_model
 from dotenv import load_dotenv
 from typing import Dict, List, Tuple
@@ -11,13 +11,12 @@ load_dotenv()
 # This file basically contains the blocks for efficiently training the model.
 
 def step(model: nn.Module,
-         dataloader: torch.utils.data.Dataloader,
+         dataloader: torch.utils.data.DataLoader,
          loss_function: torch.nn.Module,
          optimizer: torch.optim.Optimizer,
          device: torch.device,
          type_step: str)-> Tuple[float, float]:
     
-    N = len(dataloader)
     # assert max_grad_accumulation_steps / N < 0.3, "Let the grad. accumulation steps be less than 30% of total batches."
     # set the model to train mode.
 
@@ -47,15 +46,15 @@ def step(model: nn.Module,
                 optimizer.step()
 
         # Normalizing the train eval metrics.
-        step_loss = step_loss / N
-        step_acc = step_acc / N
+        step_loss = step_loss / len(dataloader)
+        step_acc = step_acc / len(dataloader)
 
     return step_loss, step_acc
 
 def train(model: nn.Module,
-          train_dataloader: torch.utils.data.Dataloader,
-          validation_dataloader: torch.utils.data.Dataloader,
-          test_dataloader: torch.utils.data.Dataloader,
+          train_dataloader: torch.utils.data.DataLoader,
+          validation_dataloader: torch.utils.data.DataLoader,
+          test_dataloader: torch.utils.data.DataLoader,
           optimizer: torch.optim.Optimizer,
           loss_function: torch.nn.Module,
           epochs: int,
@@ -63,7 +62,7 @@ def train(model: nn.Module,
           eval_interval: int,
           model_name: str,
           device: torch.device
-          )-> Dict[str, list]:
+          )-> Dict[str, List]:
     # Create empty results dictionary
     results = {"train_loss": [],
         "train_acc": [],
@@ -102,7 +101,7 @@ def train(model: nn.Module,
                                                  device=device,
                                                  type_step='val')
                 val_loss += cur_val_loss
-                val_acc += cur_val_loss
+                val_acc += cur_val_acc
 
             # Normalizing the val_loss
             val_loss = val_loss / eval_iters
@@ -111,19 +110,20 @@ def train(model: nn.Module,
 
             # Evaluating with previous scores to save the model
             if len(k):
-                if k[-1] < val_loss:
+                if k[-1] > val_loss:
                     save_model(
                         model=model,
                         optimizer=optimizer,
                         target_dir=os.environ.get('model_registry'),
                         model_name=model_name
                     )
+                    print("Saving Model!!")
 
             # Appending to results, mind it val_loss array shall be lesser in size than train_loss
             results['val_loss'].append(val_loss)
             results['val_acc'].append(val_acc)
 
-            result_string += "val_loss: {val_loss: .4f}, val_acc: {val_acc: .4f}"
+            result_string += f" val_loss: {val_loss: .4f}, val_acc: {val_acc: .4f}"
 
         # Printing epoch wise results.
         print(result_string)
@@ -140,6 +140,6 @@ def train(model: nn.Module,
     results['test_acc'].append(test_acc)
 
     print("Training Complete!!")
-    print(f"After training for {epochs} achieved test_loss: {test_loss}, test_acc: {test_acc}")
+    print(f"After training for {epochs} achieved test_loss: {test_loss: .4f}, test_acc: {test_acc: .4f}")
 
     return results
