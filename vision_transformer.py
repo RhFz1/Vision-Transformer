@@ -13,6 +13,7 @@ class ModelArgs:
     dropout: float = 0.3
     classes: int = 3
     patch_size: int = 16
+    block_size: int = 196
     in_channels: int = 3
 
 
@@ -123,7 +124,7 @@ def ComputePositionalEmbeddings(args: ModelArgs):
     epow = 10000 ** (torch.arange(0, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
     opow = 10000 ** (torch.arange(1, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
     
-    pos = torch.arange(0, args.block_size)
+    pos = torch.arange(0, args.block_size + 1)
     
     eratio = pos.unsqueeze(1) / epow.unsqueeze(0) # (blocksize, embd / 2)
     oratio = pos.unsqueeze(1) / opow.unsqueeze(0) # (blocksize, embd / 2)
