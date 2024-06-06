@@ -27,10 +27,13 @@ def step(model: nn.Module,
     with contextlib.nullcontext() if type_step == 'train' else torch.no_grad():
         for batch, (X, y) in enumerate(dataloader):
             X, y = X.to(device), y.to(device)
+            B = X.shape[0]
 
             # retrieving the logits and probs for the input X
             logits, probs = model(X)
-            loss = loss_function(logits, y)
+            # loss = loss_function(logits, y)
+            
+            loss = -probs[torch.arange(B), y].log().mean()
 
             step_loss += loss.item()
 
