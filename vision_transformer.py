@@ -99,8 +99,8 @@ class FeedForward(nn.Module):
         x = self.net(x)
         return x
 
-class Block(nn.Module):
-    def __init__(self, n_layers: int, n_heads: int, n_embd: int) -> None:
+class TransformerEncoder(nn.Module):
+    def __init__(self, n_heads: int, n_embd: int) -> None:
         super().__init__()
         self.head_size = n_embd // n_heads
         self.mha = MultiHeadedAttention(n_heads=n_heads, head_size=self.head_size, n_embd=n_embd)
@@ -111,10 +111,31 @@ class Block(nn.Module):
         x = x + self.ffwd(self.norm(x))
         return x
 
+class FullNetwork(nn.Module):
+    
+    def __init__(self, n_layers: int, n_embd: int, n_heads: int) -> None:
+        super().__init__()
+        self.eblocks = nn.Sequential(*[TransformerEncoder(n_heads, n_embd) for _ in range(n_layers)])
+        self.norm = RMSNorm(n_embd)
+        self.lm_head = nn.Sequential(
+            nn.Linear(n_embd, 4 * classes),
+            nn.GELU(),
+            nn.Linear(4 * classes ,classes),
+            nn.Dropout(dropout)
+        )
+    
+    def forward(self, x: torch.Tensor, y: torch.Tensor = None):
+        x = self.eblocks(x)
+        logits = self.lm_head(x)
 
+        if y is None:
+            loss = None
+        else:
+            B, T, cls = logits.shape
 
+            # Manual implementation of softmax
+            probsn = F.softmax(logits, dim = -1) # (B, T, cls)
+            probs = torch.mean(probsn, dim = 1) # (B, cls)
+            loss = -y[torch.arange(B), torch.argmax(probs, dim=-1)].log().mean()
+        return logits, loss
 
-class TransformerEncoder(nn.Module):
-
-    def __init__(self, n_embd: int, head_size):
-        pass
