@@ -7,9 +7,9 @@ from dataclasses import dataclass
 @dataclass
 class ModelArgs:
     n_embd: int = 768
-    n_layers: int = 8
-    n_heads: int = 8
-    max_batch_size: int = 32
+    n_layers: int = 2
+    n_heads: int = 24
+    max_batch_size: int = 8
     dropout: float = 0.3
     classes: int = 3
     patch_size: int = 16
@@ -145,6 +145,7 @@ class FullNetwork(nn.Module):
         self.norm = RMSNorm(args.n_embd)
         self.emdrop = nn.Dropout(args.dropout)
         self.lm_head = nn.Sequential(
+            nn.LayerNorm(normalized_shape=args.n_embd),
             nn.Linear(args.n_embd, 4 * args.classes),
             nn.GELU(),
             nn.Linear(4 * args.classes, args.classes),
@@ -168,14 +169,10 @@ class FullNetwork(nn.Module):
         x = self.eblocks(x)
         
         logits = self.lm_head(x)
+        B, T, cls = logits.shape
 
-        if y is None:
-            loss = None
-        else:
-            B, T, cls = logits.shape
-
-            # Manual implementation of cross entropy
-            probsn = F.softmax(logits, dim = -1) # (B, T, cls)
-            probs = torch.mean(probsn, dim = 1) # (B, cls)
-            loss = -y[torch.arange(B), torch.argmax(probs, dim=-1)].log().mean()
-        return logits, loss
+        # Manual implementation of cross entropy
+        probsn = F.softmax(logits, dim = -1) # (B, T, cls)
+        probs = torch.mean(probsn, dim = 1) # (B, cls)
+        
+        return logits, probs
