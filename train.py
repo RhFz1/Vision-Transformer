@@ -4,6 +4,7 @@ import argparse
 import data_loader, data_setup, model_builder, engine
 from dotenv import load_dotenv
 from torchvision import transforms
+from vision_transformer import FullNetwork, ModelArgs
 
 load_dotenv()
 
@@ -37,7 +38,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Create transforms
 data_transform = transforms.Compose([
-  transforms.Resize((64, 64)),
+  transforms.Resize((224, 224)),
   transforms.ToTensor()
 ])
 
@@ -46,12 +47,9 @@ train_dataloader, val_dataloader, test_dataloader, classes = data_loader.build_d
     train_dir=train_dir, test_dir=test_dir, batch_size=BATCH_SIZE, transform=data_transform ,validation_split=VALIDATION_SPLIT
 )
 
+margs = ModelArgs()
 # Let's try to create our model, optimizer and loss function
-model = model_builder.VGGModel(
-    input_shape=CHANNELS,
-    hidden_units=HIDDEN_UNITS,
-    output_shape=len(classes)
-).to(device)
+model = FullNetwork(margs)
 
 # Cross entropy loss as we're dealing with multiclass
 loss_function = torch.nn.CrossEntropyLoss()
