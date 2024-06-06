@@ -13,6 +13,7 @@ class ModelArgs:
     dropout: float = 0.3
     classes: int = 3
     patch_size: int = 16
+    in_channels: int = 3
 
 
 class PatchEmbedding(nn.Module):
