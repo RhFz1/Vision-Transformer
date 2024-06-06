@@ -55,7 +55,7 @@ class Head(nn.Module):
         k = self.key(x) # (B, T, embd) -> (B, T, headsize)
         q = self.query(x) # (B, T, embd) -> (B, T, headsize)
 
-        att = q @ k.transpose(-2, -1) # (B, T, T)
+        att = q @ k.transpose(-2, -1) * (torch.rsqrt(k.size(-1))) # (B, T, T), sclaing to ensure gaussian properties.
         mat = torch.tril(torch.ones((T, T)))
         att = torch.masked_fill(mat == 0, float('-inf'))
         att = F.softmax(att, dim = -1) # (b, t, t)
