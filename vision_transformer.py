@@ -62,9 +62,20 @@ class Head(nn.Module):
 
         v = self.value(x)
 
-        out = att @ v # (B, T, T) (B, T, C) -> (B, T, C)
+        out = att @ v # (B, T, T) (B, T, headsize) -> (B, T, headsize)
         return out
 
+class RMSNorm(nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-6) -> None:
+        super().__init__()
+
+        self.rmgain = nn.Parameter(torch.ones((dim)))
+        self.eps = eps
+    def _norm(self, x: torch.Tensor):
+        return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+    def forward(self, x:torch.Tensor):
+        return self.rmgain * self._norm(x.float()).type_as(x)
+    
 class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads: int, head_size: int, n_embd: int) -> None:
         super().__init__()
@@ -75,7 +86,13 @@ class MultiHeadedAttention(nn.Module):
         out = self.proj(out)
         return out
 
-
+class Block(nn.Module):
+    def __init__(self, n_layers: int, n_heads: int, n_embd: int) -> None:
+        super().__init__()
+        self.head_size = n_embd // n_heads
+        self.mha = MultiHeadedAttention(n_heads=n_heads, head_size=self.head_size, n_embd=n_embd)
+        self.norm = RMSNorm(n_embd)
+        self.ffwd = 
 
 
 
