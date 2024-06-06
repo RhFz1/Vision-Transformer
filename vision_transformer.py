@@ -6,10 +6,16 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelArgs:
-    pass
+    n_embed: int = 768
+    n_layers: int = 8
+    n_heads: int = 32
+    max_batch_size: int = 32
+    dropout: float = 0.3
+    classes: int = 3
+
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, in_channels: int, embd_dim: int, patch_size: int = 16) -> None:
+    def __init__(self, in_channels: int, n_embd: int, patch_size: int = 16) -> None:
         super().__init__()
 
         # Here we are trying to convert image to patches then patches to latent space vectors.
@@ -22,7 +28,7 @@ class PatchEmbedding(nn.Module):
 
         self.cnvblck = nn.Sequential(
             nn.Conv2d(in_channels=in_channels,
-                      out_channels=embd_dim,
+                      out_channels=n_embd,
                       kernel_size=patch_size,
                       stride=patch_size,
                       padding = 0),
@@ -87,7 +93,7 @@ class MultiHeadedAttention(nn.Module):
         return out
 
 class FeedForward(nn.Module):
-    def __init__(self, n_embd: int) -> None:
+    def __init__(self, n_embd: int, dropout: float) -> None:
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),
@@ -100,12 +106,12 @@ class FeedForward(nn.Module):
         return x
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, n_heads: int, n_embd: int) -> None:
+    def __init__(self, n_embd: int, n_heads: int, dropout: float) -> None:
         super().__init__()
         self.head_size = n_embd // n_heads
         self.mha = MultiHeadedAttention(n_heads=n_heads, head_size=self.head_size, n_embd=n_embd)
         self.norm = RMSNorm(n_embd)
-        self.ffwd = FeedForward(n_embd=n_embd)
+        self.ffwd = FeedForward(n_embd=n_embd, dropout=dropout)
     def forward(self, x: torch.Tensor):
         x = x + self.mha(self.norm(x))
         x = x + self.ffwd(self.norm(x))
@@ -113,15 +119,16 @@ class TransformerEncoder(nn.Module):
 
 class FullNetwork(nn.Module):
     
-    def __init__(self, n_layers: int, n_embd: int, n_heads: int) -> None:
+    def __init__(self, args: ModelArgs) -> None:
         super().__init__()
-        self.eblocks = nn.Sequential(*[TransformerEncoder(n_heads, n_embd) for _ in range(n_layers)])
-        self.norm = RMSNorm(n_embd)
+        self.args = args
+        self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_heads, args.n_embd) for _ in range(args.n_layers)])
+        self.norm = RMSNorm(args.n_embd)
         self.lm_head = nn.Sequential(
-            nn.Linear(n_embd, 4 * classes),
+            nn.Linear(args.n_embd, 4 * args.classes),
             nn.GELU(),
-            nn.Linear(4 * classes ,classes),
-            nn.Dropout(dropout)
+            nn.Linear(4 * args.classes, args.classes),
+            nn.Dropout(args.dropout)
         )
     
     def forward(self, x: torch.Tensor, y: torch.Tensor = None):
