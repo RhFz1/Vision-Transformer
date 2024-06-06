@@ -8,7 +8,7 @@ from dataclasses import dataclass
 class ModelArgs:
     n_embd: int = 768
     n_layers: int = 8
-    n_heads: int = 32
+    n_heads: int = 8
     max_batch_size: int = 32
     dropout: float = 0.3
     classes: int = 3
@@ -63,9 +63,9 @@ class Head(nn.Module):
         k = self.key(x) # (B, T, embd) -> (B, T, headsize)
         q = self.query(x) # (B, T, embd) -> (B, T, headsize)
 
-        att = q @ k.transpose(-2, -1) * (torch.rsqrt(k.size(-1))) # (B, T, T), sclaing to ensure gaussian properties.
+        att = q @ k.transpose(-2, -1) * (k.size(-1) ** -0.5) # (B, T, T), sclaing to ensure gaussian properties.
         mat = torch.tril(torch.ones((T, T)))
-        att = torch.masked_fill(mat == 0, float('-inf'))
+        att = att.masked_fill(mat[:T, :T] == 0, float('-inf'))
         att = F.softmax(att, dim = -1) # (b, t, t)
 
         v = self.value(x)
@@ -76,11 +76,10 @@ class Head(nn.Module):
 class RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6) -> None:
         super().__init__()
-
-        self.rmgain = nn.Parameter(torch.ones((dim)))
         self.eps = eps
+        self.rmgain = nn.Parameter(torch.ones((dim)))
     def _norm(self, x: torch.Tensor):
-        return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
+        return x * torch.rsqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps) # (B, Block, embd)
     def forward(self, x:torch.Tensor):
         return self.rmgain * self._norm(x.float()).type_as(x)
     
@@ -142,7 +141,7 @@ class FullNetwork(nn.Module):
         super().__init__()
         self.args = args
         self.patchembd = PatchEmbedding(args.in_channels, args.n_embd, args.max_batch_size, args.patch_size)
-        self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_heads, args.n_embd, args.dropout) for _ in range(args.n_layers)])
+        self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_embd, args.n_heads, args.dropout) for _ in range(args.n_layers)])
         self.norm = RMSNorm(args.n_embd)
         self.emdrop = nn.Dropout(args.dropout)
         self.lm_head = nn.Sequential(
@@ -157,6 +156,7 @@ class FullNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor, y: torch.Tensor = None):
         B = x.shape[0]
+        
 
         x = self.patchembd(x) # (B , block, nembd)
         x = torch.cat((x, self.class_token.expand(B, -1, -1)), dim = 1)
