@@ -117,6 +117,24 @@ class TransformerEncoder(nn.Module):
         x = x + self.ffwd(self.norm(x))
         return x
 
+def ComputePositionalEmbeddings(args: ModelArgs):
+    
+    epow = 10000 ** (torch.arange(0, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
+    opow = 10000 ** (torch.arange(1, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
+    
+    pos = torch.arange(0, args.block_size)
+    
+    eratio = pos.unsqueeze(1) / epow.unsqueeze(0) # (blocksize, embd / 2)
+    oratio = pos.unsqueeze(1) / opow.unsqueeze(0) # (blocksize, embd / 2)
+
+    sine = torch.sin(eratio)
+    cosine = torch.cos(oratio)
+
+    comb = torch.stack((sine, cosine), dim = 2)
+    out = comb.flatten(start_dim=-2, end_dim=-1) # (blocksize, embd)
+    return out
+
+
 class FullNetwork(nn.Module):
     
     def __init__(self, args: ModelArgs) -> None:
@@ -145,3 +163,6 @@ class FullNetwork(nn.Module):
             probs = torch.mean(probsn, dim = 1) # (B, cls)
             loss = -y[torch.arange(B), torch.argmax(probs, dim=-1)].log().mean()
         return logits, loss
+    
+# positional encodings
+# 1000^(-2i/d) = theta
