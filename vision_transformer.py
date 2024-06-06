@@ -141,7 +141,7 @@ class FullNetwork(nn.Module):
         super().__init__()
         self.args = args
         self.patchembd = PatchEmbedding(args.in_channels, args.n_embd, args.max_batch_size, args.patch_size)
-        self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_heads, args.n_embd) for _ in range(args.n_layers)])
+        self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_heads, args.n_embd, args.dropout) for _ in range(args.n_layers)])
         self.norm = RMSNorm(args.n_embd)
         self.emdrop = nn.Dropout(args.dropout)
         self.lm_head = nn.Sequential(
