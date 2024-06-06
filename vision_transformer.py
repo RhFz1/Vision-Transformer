@@ -86,13 +86,30 @@ class MultiHeadedAttention(nn.Module):
         out = self.proj(out)
         return out
 
+class FeedForward(nn.Module):
+    def __init__(self, n_embd: int) -> None:
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(n_embd, 4 * n_embd),
+            nn.GELU(),
+            nn.Linear(4 * n_embd, n_embd),
+            nn.Dropout(dropout)
+        )
+    def forward(self, x: torch.Tensor):
+        x = self.net(x)
+        return x
+
 class Block(nn.Module):
     def __init__(self, n_layers: int, n_heads: int, n_embd: int) -> None:
         super().__init__()
         self.head_size = n_embd // n_heads
         self.mha = MultiHeadedAttention(n_heads=n_heads, head_size=self.head_size, n_embd=n_embd)
         self.norm = RMSNorm(n_embd)
-        self.ffwd = 
+        self.ffwd = FeedForward(n_embd=n_embd)
+    def forward(self, x: torch.Tensor):
+        x = x + self.mha(self.norm(x))
+        x = x + self.ffwd(self.norm(x))
+        return x
 
 
 
