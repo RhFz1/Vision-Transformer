@@ -6,16 +6,17 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelArgs:
-    n_embed: int = 768
+    n_embd: int = 768
     n_layers: int = 8
     n_heads: int = 32
     max_batch_size: int = 32
     dropout: float = 0.3
     classes: int = 3
+    patch_size: int = 16
 
 
 class PatchEmbedding(nn.Module):
-    def __init__(self, in_channels: int, n_embd: int, patch_size: int = 16) -> None:
+    def __init__(self, in_channels: int, n_embd: int, batch_size: int, patch_size: int = 16) -> None:
         super().__init__()
 
         # Here we are trying to convert image to patches then patches to latent space vectors.
@@ -42,7 +43,6 @@ class PatchEmbedding(nn.Module):
 
         x = self.cnvblck(x)
         x = x.permute(0, 2, 1) # this is to ensure embd dim is the last one (b, embd, (h * w)/k^2) -> (b, (h * w)/k^2, embd)
-        
         return x.type_as(x) # to ensure type remains the same after operations.
     
 class Head(nn.Module):
@@ -118,7 +118,7 @@ class TransformerEncoder(nn.Module):
         return x
 
 def ComputePositionalEmbeddings(args: ModelArgs):
-    
+
     epow = 10000 ** (torch.arange(0, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
     opow = 10000 ** (torch.arange(1, args.n_embd, 2) / args.n_embd) # basically (n_embd / 2)
     
@@ -134,23 +134,37 @@ def ComputePositionalEmbeddings(args: ModelArgs):
     out = comb.flatten(start_dim=-2, end_dim=-1) # (blocksize, embd)
     return out
 
-
 class FullNetwork(nn.Module):
     
     def __init__(self, args: ModelArgs) -> None:
         super().__init__()
         self.args = args
+        self.patchembd = PatchEmbedding(args.in_channels, args.n_embd, args.max_batch_size, args.patch_size)
         self.eblocks = nn.Sequential(*[TransformerEncoder(args.n_heads, args.n_embd) for _ in range(args.n_layers)])
         self.norm = RMSNorm(args.n_embd)
+        self.emdrop = nn.Dropout(args.dropout)
         self.lm_head = nn.Sequential(
             nn.Linear(args.n_embd, 4 * args.classes),
             nn.GELU(),
             nn.Linear(4 * args.classes, args.classes),
             nn.Dropout(args.dropout)
         )
-    
+        self.pos_embd = nn.Parameter(ComputePositionalEmbeddings(args))
+        self.class_token = nn.Parameter(torch.randn(1, 1, args.n_embd),
+                                    requires_grad=True)
+
     def forward(self, x: torch.Tensor, y: torch.Tensor = None):
+        B = x.shape[0]
+
+        x = self.patchembd(x) # (B , block, nembd)
+        x = torch.cat((x, self.class_token.expand(B, -1, -1)), dim = 1)
+
+        x = self.pos_embd + x # (B, block, nembd)
+
+        x = self.emdrop(x)
+
         x = self.eblocks(x)
+        
         logits = self.lm_head(x)
 
         if y is None:
@@ -163,6 +177,3 @@ class FullNetwork(nn.Module):
             probs = torch.mean(probsn, dim = 1) # (B, cls)
             loss = -y[torch.arange(B), torch.argmax(probs, dim=-1)].log().mean()
         return logits, loss
-    
-# positional encodings
-# 1000^(-2i/d) = theta
