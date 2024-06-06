@@ -63,10 +63,17 @@ class Head(nn.Module):
         v = self.value(x)
 
         out = att @ v # (B, T, T) (B, T, C) -> (B, T, C)
-
         return out
 
-
+class MultiHeadedAttention(nn.Module):
+    def __init__(self, n_heads: int, head_size: int, n_embd: int) -> None:
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size, n_embd) for _ in range(n_heads)])
+        self.proj = nn.Linear(n_heads * head_size, n_embd, bias= False)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = torch.cat([h(x) for h in self.heads], dim = -1)
+        out = self.proj(out)
+        return out
 
 
 
