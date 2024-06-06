@@ -133,9 +133,8 @@ class FullNetwork(nn.Module):
         else:
             B, T, cls = logits.shape
 
-            # Manual implementation of softmax
+            # Manual implementation of cross entropy
             probsn = F.softmax(logits, dim = -1) # (B, T, cls)
             probs = torch.mean(probsn, dim = 1) # (B, cls)
             loss = -y[torch.arange(B), torch.argmax(probs, dim=-1)].log().mean()
         return logits, loss
-
