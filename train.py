@@ -27,7 +27,7 @@ EVAL_ITERS = 8
 NUM_EPOCHS = 200
 VALIDATION_SPLIT = 0.3
 CHANNELS = 3
-LEARNING_RATE = 3e-6
+LEARNING_RATE = 3e-4
 
 # Setup directories
 train_dir = os.path.join(os.environ.get('data_path'), 'images', 'train')
@@ -54,7 +54,7 @@ model = FullNetwork(margs)
 # Cross entropy loss as we're dealing with multiclass
 loss_function = torch.nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(model.parameters() ,lr=LEARNING_RATE ,weight_decay=1e-2)
+optimizer = torch.optim.Adam(model.parameters() ,lr=LEARNING_RATE ,weight_decay=1e-3)
 
 # Training the model 
 
