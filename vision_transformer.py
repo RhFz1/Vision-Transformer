@@ -63,7 +63,7 @@ class Head(nn.Module):
         k = self.key(x) # (B, T, embd) -> (B, T, headsize)
         q = self.query(x) # (B, T, embd) -> (B, T, headsize)
 
-        att = q @ k.transpose(-2, -1) * (k.size(-1) ** -0.5) # (B, T, T), sclaing to ensure gaussian properties.
+        att = q @ k.transpose(-2, -1) * (k.size(-1) ** -0.5) # (B, T, T), sclaing to ensure gaussian properties retention.
         mat = torch.tril(torch.ones((T, T)))
         att = att.masked_fill(mat[:T, :T] == 0, float('-inf'))
         att = F.softmax(att, dim = -1) # (b, t, t)
@@ -125,13 +125,14 @@ def ComputePositionalEmbeddings(args: ModelArgs):
     
     pos = torch.arange(0, args.block_size + 1)
     
-    eratio = pos.unsqueeze(1) / epow.unsqueeze(0) # (blocksize, embd / 2)
-    oratio = pos.unsqueeze(1) / opow.unsqueeze(0) # (blocksize, embd / 2)
+    eratio = pos.unsqueeze(1) / epow.unsqueeze(0) # (blocksize + 1, embd / 2)
+    oratio = pos.unsqueeze(1) / opow.unsqueeze(0) # (blocksize + 1, embd / 2)
 
     sine = torch.sin(eratio)
     cosine = torch.cos(oratio)
 
-    comb = torch.stack((sine, cosine), dim = 2)
+    # Trying to alternate the values.
+    comb = torch.stack((sine, cosine), dim = 2) # this is done to ensure sine values correspong to even and cosine to odd positions.
     out = comb.flatten(start_dim=-2, end_dim=-1) # (blocksize, embd)
     return out
 
@@ -156,20 +157,33 @@ class FullNetwork(nn.Module):
                                     requires_grad=True)
 
     def forward(self, x: torch.Tensor, y: torch.Tensor = None):
-        B = x.shape[0]
         
+        # Getting the batch size
+        B = x.shape[0]
 
+        # Creating patches for each image and converting each patch to latent space vector.
         x = self.patchembd(x) # (B , block, nembd)
+        # Adding special token, as per paper.
         x = torch.cat((x, self.class_token.expand(B, -1, -1)), dim = 1)
 
+        # Adding position embeds.
         x = self.pos_embd + x # (B, block, nembd)
 
         x = self.emdrop(x)
 
+        # Passing the block of embd vectors through enc. transformer layer.
         x = self.eblocks(x)
         
+        # Feedforward for classification.
         logits = self.lm_head(x)
         B, T, cls = logits.shape
+
+
+        # This block is ambiguous to me
+        # As I produce 197 patches for each image, each one of them providing values for the 3 classes.
+        # Should I calculate softmax for each then average or I take the average of logits along 197 dim then proceed with softmax.
+        # Still have to work it through
+        # But this works fine!!
 
         # Manual implementation of cross entropy
         probsn = F.softmax(logits, dim = -1) # (B, T, cls)
