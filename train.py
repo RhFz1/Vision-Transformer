@@ -50,11 +50,12 @@ train_dataloader, val_dataloader, test_dataloader, classes = data_loader.build_d
 margs = ModelArgs()
 # Let's try to create our model, optimizer and loss function
 model = FullNetwork(margs)
+model = model.to(device=device)
 
 # Cross entropy loss as we're dealing with multiclass
 loss_function = torch.nn.CrossEntropyLoss()
 
-optimizer = torch.optim.Adam(model.parameters() ,lr=LEARNING_RATE ,weight_decay=1e-3)
+optimizer = torch.optim.Adam(model.parameters() ,lr=LEARNING_RATE ,weight_decay=1e-2)
 
 # Training the model 
 
