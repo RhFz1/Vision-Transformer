@@ -30,8 +30,8 @@ CHANNELS = 3
 LEARNING_RATE = 3e-4
 
 # Setup directories
-train_dir = os.path.join(os.environ.get('data_path'), 'images', 'train')
-test_dir = os.path.join(os.environ.get('data_path'), 'images', 'test')
+train_dir = os.path.join(os.environ.get('data_path', '/home/syednoor/Desktop/FAIR/Vision-Transformer/data'), 'images', 'train')
+test_dir = os.path.join(os.environ.get('data_path','/home/syednoor/Desktop/FAIR/Vision-Transformer/data'), 'images', 'test')
 
 # Setup target device
 device = "cuda" if torch.cuda.is_available() else "cpu"
